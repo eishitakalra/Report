@@ -1,0 +1,539 @@
+
+install.packages("readxl")   # For reading Excel files
+install.packages("dplyr")    # For data manipulation
+install.packages("ggplot2")  # For visualisation
+install.packages("stats")    # For statistical tests
+install.packages("caret")    # For train-test splitting
+install.packages("multcomp") # For Bonferroni correction
+install.packages("writexl")
+install.packages("gridExtra")
+
+# Load libraries
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(stats)
+library(caret)
+library(multcomp)
+library(openxlsx)
+library(readxl)
+library(dplyr)
+library(writexl)
+library(gridExtra)
+
+# read excel files 
+biomarkers <- read_excel("/Users/eishitakalra/Desktop/Project - Prob&Stats/biomarkers.xlsx")
+covariates <- read_excel("/Users/eishitakalra/Desktop/Project - Prob&Stats/covariates.xlsx")
+
+colnames(biomarkers)
+
+# all patients at 0 weeks
+patients_0weeks <- biomarkers %>%
+  filter(grepl("-0weeks$", Biomarker))  # Replace PatientID with the actual column name
+
+#just the patient IDs 
+patient_ids_0weeks <- gsub("-0weeks", "", patients_0weeks$Biomarker)  
+
+print(patients_0weeks)          # data for patients at 0 weeks
+print(patient_ids_0weeks)       # just the patient IDs
+
+# number of rows 
+num_observations <- nrow(patient_ids_0weeks)
+str(patient_ids_0weeks)
+
+# number of patient IDs at 0 weeks
+num_patient_ids_0weeks <- length(patient_ids_0weeks)
+print(num_patient_ids_0weeks)
+
+# biomarkers data for 0 weeks and matching patient IDs
+biomarkers_0weeks <- biomarkers %>%
+  filter(grepl("-0weeks$", Biomarker) & sub("-0weeks", "", Biomarker) %in% patient_ids_0weeks) %>%
+  mutate(Biomarker = sub("-0weeks", "", Biomarker))  # Remove "-0weeks" suffix to match IDs in covariates
+
+# a new data frame with only the PatientID and Sex columns
+covariates_filtered <- covariates[, c("PatientID", "Sex (1=male, 2=female)")]
+names(covariates_filtered) <- c("PatientID", "Sex")  # Rename columns for simplicity
+
+# ensure covariates is a data frame
+covariates <- as.data.frame(covariates)
+
+# extract the required columns using base R
+covariates_filtered <- covariates[, c("PatientID", "Sex (1=male, 2=female)")]
+
+# rename columns
+colnames(covariates_filtered) <- c("PatientIDs", "Sex")
+colnames(biomarkers_0weeks) <- c("PatientIDs", "IL-8" , "VEGF-A", "OPG","TGF-beta-1", "IL-6" ,"CXCL9","CXCL1","IL-18","CSF-1")
+colnames(covariates_filtered)
+colnames(biomarkers_0weeks)
+
+num_rows <- nrow(covariates_filtered)
+print(paste("Number of rows in covariates_filtered:", num_rows))
+num_rows2 <- nrow(biomarkers_0weeks)
+print(paste("Number of rows in biomarkers_0weeks:", num_rows2))
+
+# find missing patient data and remove row
+missing_patients <- setdiff(covariates_filtered$PatientIDs, biomarkers_0weeks$PatientIDs)
+print(missing_patients)
+
+covariates_filtered$PatientIDs <- as.character(covariates_filtered$PatientIDs)
+
+row_40 <- covariates[covariates$PatientID == 40, ]
+print(row_40)
+
+#  PatientIDs in covariates_filtered to a character 
+covariates_filtered$PatientIDs <- as.character(covariates_filtered$PatientIDs)
+
+# merge the datasets
+merged_data <- biomarkers_0weeks %>%
+  left_join(covariates_filtered, by = "PatientIDs")
+
+str(covariates_filtered)
+
+# save the merged data
+output_file <- "0week_data.xlsx"
+write_xlsx(merged_data, path = output_file)
+
+print(paste("Merged data saved to", output_file))
+
+# Filter for Sex == 1
+male <- merged_data %>%
+  filter(Sex == 1)
+  
+# Filter for Sex == 2
+female <- merged_data %>%
+  filter(Sex == 2)
+
+# Save the dataset where Sex == 1
+write_xlsx(male, path = "male_data.xlsx")
+print("Merged data for Sex == 1 (without Sex column) saved to male_data.xlsx")
+
+# Save the dataset where Sex == 2
+write_xlsx(female, path = "female_data.xlsx")
+print("Merged data for Sex == 2 (without Sex column) saved to female_data.xlsx")
+
+# t-test for IL-8
+f1 <- female$`IL-8`
+m1 <- male$`IL-8`
+t_test1 <- t.test(f1,m1,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for VEGF-A
+f2 <- female$`VEGF-A`
+m2 <- male$`VEGF-A`
+t_test2 <- t.test(f2,m2,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for OPG
+f3 <- female$`OPG`
+m3 <- male$`OPG`
+t_test3 <- t.test(f3,m3,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for TGF-beta-1
+f4 <- female$`TGF-beta-1`
+m4 <- male$`TGF-beta-1`
+t_test4 <- t.test(f4,m4,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for IL-6
+f5 <- female$`IL-6`
+m5 <- male$`IL-6`
+t_test5 <- t.test(f5,m5,var.equal = FALSE, conf.level = 0.95)
+
+# t-test for CXCL9
+f6 <- female$`CXCL9`
+m6 <- male$`CXCL9`
+t_test6 <- t.test(f6,m6,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for CXCL1
+f7 <- female$`CXCL1`
+m7 <- male$`CXCL1`
+t_test7 <- t.test(f7,m7,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for IL-18
+f8 <- female$`IL-18`
+m8 <- male$`IL-18`
+t_test8 <- t.test(f8,m8,var.equal = TRUE, conf.level = 0.95)
+
+# t-test for CSF-1
+f9 <- female$`CSF-1`
+m9 <- male$`CSF-1`
+t_test9 <- t.test(f9,m9,var.equal = FALSE, conf.level = 0.95)
+
+
+
+# extract p-values
+p_values <- c(t_test1$p.value, t_test2$p.value, t_test3$p.value, t_test4$p.value, t_test5$p.value, t_test6$p.value, t_test7$p.value, t_test8$p.value, t_test9$p.value)
+print(p_values)
+
+# Bonferroni correction
+p_adjusted <- p.adjust(p_values, method = "bonferroni")
+
+biomarker_names <-colnames(female)
+biomarker_names <- biomarker_names[-1]
+biomarker_names <- biomarker_names[-10]
+biomarker_names <- paste(biomarker_names, collapse = ", ")
+biomarker_names <- unlist(strsplit(biomarker_names, ", "))
+
+# print original and adjusted p-values
+data.frame(
+  Test = c(biomarker_names),
+  P_Value = p_values,
+  Adjusted_P_Value = p_adjusted
+)
+
+# second method of Bonferroni correction
+
+# alpha level
+alpha <- 0.05
+
+# Number of tests
+n <- length(p_values)
+
+# Bonferroni adjusted alpha
+adjusted_alpha <- alpha / n
+
+# Determine which tests are significant
+significant <- p_values < adjusted_alpha
+
+# Results
+result <- data.frame(P_value = p_values, Adjusted_alpha = adjusted_alpha, Significant = significant)
+print(result)
+
+family_wise_error_rate <- (1-(1-alpha)^n)
+FWER_percent <- sprintf("%.0f%%", family_wise_error_rate * 100)
+print(FWER_percent)
+
+# multiple hypothesis testing visualisation
+
+# Create a data frame to hold the results
+p_values_df <- data.frame(
+  Biomarker = c("IL-8", "VEGF-A", "OPG", "TGF-beta-1", "IL-6", 
+                "CXCL9", "CXCL1", "IL-18", "CSF-1"),
+  P_Value = c(t_test1$p.value, t_test2$p.value, t_test3$p.value, 
+              t_test4$p.value, t_test5$p.value, t_test6$p.value, 
+              t_test7$p.value, t_test8$p.value, t_test9$p.value)
+)
+
+# View the p-values data frame
+print(p_values_df)
+
+
+# Create the bar plot with a horizontal line at alpha = 0.05
+ggplot(p_values_df, aes(x = Biomarker, y = P_Value)) +
+  geom_bar(stat = "identity", fill = "firebrick") +
+  geom_hline(yintercept = 0.05, linetype = "dotted", color = "black", size = 0.5) +  # Add horizontal line
+  coord_flip() +  # Flips the axes for better readability
+  labs(title = "P-Values for Biomarker Comparisons", x = "Biomarker", y = "P-Value") +
+  theme_minimal()
+ggsave("p_values_plot.png", plot = last_plot(), width = 8, height = 6)
+
+
+# indicate whether the null hypothesis is rejected
+p_values_df$Reject_Null <- ifelse(p_values_df$P_Value < alpha, "Yes", "No")
+print(p_values_df)
+
+# Bonferroni visualisation
+
+# Create a data frame to hold the results
+adjusted_p_values_df <- data.frame(
+  Biomarker = c("IL-8", "VEGF-A", "OPG", "TGF-beta-1", "IL-6", 
+                "CXCL9", "CXCL1", "IL-18", "CSF-1"),
+  P_Value = c(p_adjusted)
+)
+
+# View the p-values data frame
+print(adjusted_p_values_df)
+str(adjusted_p_values_df)
+adjusted_p_values_df$Biomarker <- as.factor(adjusted_p_values_df$Biomarker)
+
+ggplot(adjusted_p_values_df, aes(x = Biomarker, y = P_Value)) +
+  geom_bar(stat = "identity", fill = "firebrick") +
+  geom_hline(yintercept = 0.05, linetype = "dotted", color = "black", size = 0.5) +  # Add horizontal line
+  coord_flip() +  # Flips the axes for better readability
+  labs(title = "Adjusted P-Values for Biomarker Comparisons", x = "Biomarker", y = "Adjusted P-Value") +
+  theme_minimal()
+ggsave("bonferroni_correction_adjusted_p_values_plot.png", plot = last_plot(), width = 8, height = 6)
+
+
+
+# indicate if we reject the null hypothesis based on adjusted p-values
+adjusted_p_values_df$Reject_Null <- ifelse(adjusted_p_values_df$P_Value < alpha, "Yes", "No")
+
+# View the adjusted p-values with rejection decision
+print(adjusted_p_values_df)
+
+# save tables
+write.csv(p_values_df, "hypothesis_testing_p_values_results.csv", row.names = FALSE)
+write.csv(adjusted_p_values_df, "bonferroni_correction_adjusted_p_values_results.csv", row.names = FALSE)
+
+
+# checking variance for choice of wald or two sample t-test (is the variance equal or not):
+
+
+# extract biomarker columns by removing the first and last columns
+biomarkers_female <- female[, -c(1, ncol(female))]  # Remove PatientID and Sex
+biomarkers_male <- male[, -c(1, ncol(male))]        # Remove PatientID and Sex
+
+# initialise a data frame to store results
+variance_results <- data.frame(
+  Biomarker = colnames(biomarkers_female),
+  Female_Variance = numeric(length(colnames(biomarkers_female))),
+  Male_Variance = numeric(length(colnames(biomarkers_male))),
+  Variance_Difference = numeric(length(colnames(biomarkers_female)))
+)
+
+# calculate variances and differences
+for (i in 1:length(colnames(biomarkers_female))) {
+  var_female <- var(biomarkers_female[[i]])
+  var_male <- var(biomarkers_male[[i]])
+  
+  variance_results$Female_Variance[i] <- var_female
+  variance_results$Male_Variance[i] <- var_male
+  variance_results$Variance_Difference[i] <- var_female - var_male
+}
+
+# print the results with biomarker names
+print(variance_results, row.names = FALSE)
+
+#f test
+# Initialize a data frame to store results
+variance_results <- data.frame(
+  Biomarker = colnames(biomarkers_female),
+  Female_Variance = numeric(length(colnames(biomarkers_female))),
+  Male_Variance = numeric(length(colnames(biomarkers_male))),
+  F_Value = numeric(length(colnames(biomarkers_female))),
+  p_Value = numeric(length(colnames(biomarkers_female))),
+  Reject_Null = character(length(colnames(biomarkers_female))) # New column for rejection
+)
+
+# Calculate variances and perform F-tests
+for (i in 1:length(colnames(biomarkers_female))) {
+  var_female <- var(biomarkers_female[[i]])
+  var_male <- var(biomarkers_male[[i]])
+  
+  # Perform F-test for equality of variances
+  f_test_result <- var.test(biomarkers_female[[i]], biomarkers_male[[i]])
+  
+  # Store results
+  variance_results$Female_Variance[i] <- var_female
+  variance_results$Male_Variance[i] <- var_male
+  variance_results$F_Value[i] <- f_test_result$statistic
+  variance_results$p_Value[i] <- f_test_result$p.value
+  
+  # Determine if we reject the null hypothesis
+  if (f_test_result$p.value < 0.05) {
+    variance_results$Reject_Null[i] <- "Yes"
+  } else {
+    variance_results$Reject_Null[i] <- "No"
+  }
+}
+
+# Print the results in a tabular format and save table
+print("Variance Results for Biomarker Comparisons")
+print(variance_results, row.names = FALSE)
+write.csv(variance_results, file = "variance_results.csv", row.names = FALSE)
+
+
+# 2. REGRESSION 
+
+# create data sets for response data and explanatory data
+response_data <- subset(covariates, select = c(PatientID, `Vas-12months`))
+explanatory_data <- merge(covariates, biomarkers_0weeks, by.x = "PatientID", by.y = "PatientIDs")
+explanatory_data <- subset(explanatory_data, select = c(PatientID, Age, `Sex (1=male, 2=female)`,`Smoker (1=yes, 2=no)`, `VAS-at-inclusion`, `IL-8`, `VEGF-A`, OPG, `TGF-beta-1`, `IL-6`, `CXCL9`, `CXCL1`, `IL-18`, `CSF-1`))
+
+# merge the response and explanatory data by PatientID
+model_data <- merge(response_data, explanatory_data, by = "PatientID")
+
+# split data into 80% for creating the model and 20% for predictions to be done later on
+
+# a random seed to ensure consistent code
+# Set a random seed for reproducibility
+set.seed(123)
+
+# Create a random sample for 80% of the data
+sample_size <- floor(0.8 * nrow(model_data))
+train_indices <- sample(seq_len(nrow(model_data)), size = sample_size)
+
+# Split the data
+train_data <- model_data[train_indices, ]
+test_data <- model_data[-train_indices, ]
+
+# Fit the model on the training data
+model <- lm(`Vas-12months` ~ Age + `Sex (1=male, 2=female)` + `Smoker (1=yes, 2=no)` + 
+              `VAS-at-inclusion` + `IL-8` + `VEGF-A` + OPG + `TGF-beta-1` + 
+              `IL-6` + CXCL9 + CXCL1 + `IL-18` + `CSF-1`, data = train_data)
+#+ `Sex (1=male, 2=female)` + `Smoker (1=yes, 2=no)` + `VAS-at-inclusion` + `IL-8` + `VEGF-A` + OPG + `TGF-beta-1` + `IL-6` + CXCL9 + CXCL1 + `IL-18` + `CSF-1`, data = train_data)
+
+# View the fitted parameter values
+summary(model)
+
+
+# Extract only the fitted parameter (coefficient) estimates
+fitted_params <- summary(model)$coefficients[, "Estimate"]
+
+# Convert to a data frame for Excel output
+fitted_params_df <- data.frame(Parameter = names(fitted_params), Estimate = fitted_params)
+
+# Save to Excel file
+write_xlsx(fitted_params_df, "fitted_parameter_values.xlsx")
+# Generate predictions on the test data
+test_data$predicted_VAS <- predict(model, newdata = test_data)
+
+# Check for missing values in test_data and remove patient 40
+missing_values <- test_data[!complete.cases(test_data), ]
+print(missing_values)
+test_data <- na.omit(test_data)  
+
+
+# Scatter plot for VAS at 12 Months vs Age
+plot_age <- ggplot(test_data, aes(x = Age, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. Age",
+       x = "Age",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+# Scatter plot for VAS at 12 Months vs VAS at Inclusion
+plot_vas_inclusion <- ggplot(test_data, aes(x = `VAS-at-inclusion`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. VAS at Inclusion",
+       x = "VAS at Inclusion",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+# Scatter plots for each biomarker
+plot_il8 <- ggplot(test_data, aes(x = `IL-8`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. IL-8",
+       x = "IL-8 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_vegf_a <- ggplot(test_data, aes(x = `VEGF-A`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. VEGF-A",
+       x = "VEGF-A Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_opg <- ggplot(test_data, aes(x = OPG, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. OPG",
+       x = "OPG Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_tgf_beta1 <- ggplot(test_data, aes(x = `TGF-beta-1`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. TGF-beta-1",
+       x = "TGF-beta-1 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_il6 <- ggplot(test_data, aes(x = `IL-6`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. IL-6",
+       x = "IL-6 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_cxcl9 <- ggplot(test_data, aes(x = `CXCL9`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. CXCL9",
+       x = "CXCL9 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_cxcl1 <- ggplot(test_data, aes(x = `CXCL1`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. CXCL1",
+       x = "CXCL1 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_il18 <- ggplot(test_data, aes(x = `IL-18`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. IL-18",
+       x = "IL-18 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+plot_csf1 <- ggplot(test_data, aes(x = `CSF-1`, y = `Vas-12months`)) +
+  geom_point() +
+  geom_smooth(method = "lm", color = "red") +
+  labs(title = "VAS at 12 Months vs. CSF-1",
+       x = "CSF-1 Levels",
+       y = "VAS at 12 Months") +
+  theme_minimal()
+
+# Arrange all plots in a grid
+combined_plot <- grid.arrange(
+  plot_age, plot_vas_inclusion, plot_il8, plot_vegf_a, plot_opg,
+  plot_tgf_beta1, plot_il6, plot_cxcl9, plot_cxcl1, plot_il18, plot_csf1,
+  ncol = 4  # Adjust the number of columns to control layout (e.g., 3 columns)
+)
+
+# Save the combined plot as a single image
+ggsave("combined_biomarker_plots.png", combined_plot, width = 15, height = 12, dpi = 300)
+
+#  out of sample evaluation:
+
+# Generate predictions for the test data
+test_data$predicted_VAS <- predict(model, newdata = test_data)
+
+# Calculate prediction errors
+test_data$error <- test_data$`Vas-12months` - test_data$predicted_VAS
+
+mae <- mean(abs(test_data$error))  
+rmse <- sqrt(mean(test_data$error^2))  
+
+print(paste("Mean Absolute Error (MAE):", round(mae, 2)))
+print(paste("Root Mean Squared Error (RMSE):", round(rmse, 2)))
+
+# Create a summary table to compare predicted vs actual values
+comparison_table <- test_data[, c("PatientID", "Vas-12months", "predicted_VAS", "error")]
+
+# Save the comparison table as an Excel file for reporting
+write_xlsx(comparison_table, "VAS_Prediction_Comparison.xlsx")
+
+print(comparison_table)
+
+# Scatter plot with line of best fit and reference line
+plot_comparison <- ggplot(test_data, aes(x = `Vas-12months`, y = predicted_VAS)) +
+  geom_point(color = "black") +
+  geom_abline(slope = 1, intercept = 0, color = "darkolivegreen", linetype = "dashed") +  # Perfect prediction line
+  geom_smooth(method = "lm", color = "firebrick", se = FALSE) +  # Line of best fit
+  labs(title = "Actual vs. Predicted VAS at 12 Months",
+       x = "Actual VAS at 12 Months",
+       y = "Predicted VAS at 12 Months") +
+  theme_minimal()
+
+# Save plot
+ggsave("VAS_Prediction_Comparison_Plot.png", plot_comparison, width = 6, height = 6, dpi = 300)
+
+print(plot_comparison)
+
+# Extract residuals from the model
+residuals_train <- train_data$residuals
+
+# Remove row for patient 40 with missing data
+train_data_clean <- na.omit(train_data)
+
+# Extract residuals from the cleaned model
+residuals_train_clean <- residuals(model_clean)
+
+# save the qq plot as a PNG
+png("qq_plotr.png", width = 6, height = 6, units = "in", res = 300)
+# create the Q-Q plot
+qqnorm(residuals_train_clean, main = "Q-Q Plot of Residuals", 
+       xlab = "Quantiles Expected", ylab = "Quantiles Observed")
+qqline(residuals_train_clean, col = "firebrick", lwd = 2)
+#save the plot
+dev.off()
